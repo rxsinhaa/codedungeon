@@ -7,6 +7,7 @@ import Spellbook from './Spellbook';
 import Hud from './Hud';
 import QuestBoard from './QuestBoard';
 import RoomTransition from './RoomTransition';
+import VictoryScroll from './VictoryScroll';
 import type { Language } from '@/lib/languages';
 import { getLanguage } from '@/lib/languages';
 import { executeCode, createQuests } from '@/app/actions/code';
@@ -36,6 +37,7 @@ interface CodeDungeonProps {
 export default function CodeDungeon({ roomId = 'tavern-room-alpha', playerName, onExit }: CodeDungeonProps) {
   const [isQuestBoardOpen, setQuestBoardOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isTransitionOpen, setIsTransitionOpen] = useState(false);
 
   useEffect(() => {
     const checkFullscreen = () => setIsFullscreen(!!document.fullscreenElement);
@@ -92,7 +94,11 @@ export default function CodeDungeon({ roomId = 'tavern-room-alpha', playerName, 
   const [currentDungeon, setCurrentDungeon] = useState<DungeonLevel>(dungeons[0]);
 
   const logToConsole = useCallback((message: string, type: LogMessage['type']) => {
-    setLogs(prevLogs => [...prevLogs, { message, type, timestamp: Date.now() }]);
+    setLogs(prevLogs => {
+      const newLog = { message, type, timestamp: Date.now() };
+      const newLogs = [...prevLogs, newLog];
+      return newLogs.slice(-100); // Keep only last 100 logs to prevent memory leak
+    });
   }, []);
 
   // Function to apply theme
@@ -422,6 +428,7 @@ export default function CodeDungeon({ roomId = 'tavern-room-alpha', playerName, 
       if (expectedDungeonIndex < dungeons.length) {
         const nextDungeon = dungeons[expectedDungeonIndex];
         setCurrentDungeon(nextDungeon);
+        setIsTransitionOpen(true);
         logToConsole(`You have advanced to the next room: ${nextDungeon.name}!`, 'SYSTEM');
       }
     }
@@ -440,32 +447,11 @@ export default function CodeDungeon({ roomId = 'tavern-room-alpha', playerName, 
 
   if (isGameWon) {
     return (
-      <div className="bg-background h-screen flex flex-col items-center justify-center font-retro text-foreground relative overflow-hidden animate-in fade-in duration-1000">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-500/20 via-background to-background z-0"></div>
-        <div className="z-10 text-center p-8 border-4 border-yellow-500/50 bg-black/80 shadow-[0_0_100px_rgba(234,179,8,0.5)] rounded-lg max-w-2xl w-full mx-4">
-          <h1 className="text-6xl text-yellow-500 mb-6 drop-shadow-[4px_4px_0_rgba(0,0,0,1)] animate-pulse">VICTORY!</h1>
-          <p className="text-2xl mb-8">You have conquered the Dungeon of Code!</p>
-
-          <div className="grid grid-cols-2 gap-8 text-left mb-8">
-            <div className="bg-white/5 p-4 rounded border border-white/10">
-              <div className="text-muted-foreground text-sm uppercase tracking-widest mb-1">Total Gold Earned</div>
-              <div className="text-4xl text-yellow-400 font-pixel">{gold}g</div>
-            </div>
-            <div className="bg-white/5 p-4 rounded border border-white/10">
-              <div className="text-muted-foreground text-sm uppercase tracking-widest mb-1">Quests Completed</div>
-              <div className="text-4xl text-blue-400 font-pixel">{completedQuestsCount}</div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <p className="text-lg text-muted-foreground">The guilds sing of your legendary syntax.</p>
-            <button onClick={handleExit} className="px-8 py-3 bg-primary text-primary-foreground hover:bg-primary/90 rounded border-2 border-primary-foreground/20 transition-all hover:scale-105 font-bold">
-              Start New Adventure
-            </button>
-          </div>
-        </div>
-      </div>
-    )
+      <VictoryScroll
+        playerName={party[auth.currentUser?.uid || '']?.name?.replace('wizard-', '') || playerName}
+        onNewAdventure={handleExit}
+      />
+    );
   }
 
   return (
@@ -526,9 +512,9 @@ export default function CodeDungeon({ roomId = 'tavern-room-alpha', playerName, 
         />
       </main>
       <RoomTransition
-        isOpen={false /* TODO: wiring up state */}
+        isOpen={isTransitionOpen}
         dungeonName={currentDungeon.name}
-        onComplete={() => { }}
+        onComplete={() => setIsTransitionOpen(false)}
       />
       <QuestBoard
         isOpen={isQuestBoardOpen}
