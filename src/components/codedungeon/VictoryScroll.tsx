@@ -34,7 +34,7 @@ export default function VictoryScroll({ playerName, onNewAdventure }: VictoryScr
     // Background Music Effect
     useEffect(() => {
         const audio = new Audio('/music.mp4');
-        audio.currentTime = 7; // Start at 7s
+        audio.currentTime = 5; // Start at 7s
         audio.volume = 0.5; // Reasonable volume
 
         const playAudio = async () => {
@@ -48,7 +48,7 @@ export default function VictoryScroll({ playerName, onNewAdventure }: VictoryScr
         const handleTimeUpdate = () => {
             // Loop from 32s back to 7s
             if (audio.currentTime >= 32) {
-                audio.currentTime = 7;
+                audio.currentTime = 5;
                 audio.play();
             }
         };
