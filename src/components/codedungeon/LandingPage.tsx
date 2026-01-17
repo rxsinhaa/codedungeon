@@ -207,7 +207,7 @@ export default function LandingPage({ onJoin, initialRoomId }: LandingPageProps)
 
             <Dialog open={isAuthDialogOpen} onOpenChange={setAuthDialogOpen}>
                 <DialogContent className="bg-stone-900 border-4 border-stone-600 sm:max-w-md p-0 overflow-hidden text-white">
-                    <Tabs value={authMode} onValueChange={(v) => setAuthMode(v as 'login' | 'signup')} className="w-full">
+                    <Tabs value={authMode} onValueChange={(v: string) => setAuthMode(v as 'login' | 'signup')} className="w-full">
                         <TabsList className="w-full grid grid-cols-2 rounded-none bg-stone-800 p-0 h-14">
                             <TabsTrigger
                                 value="login"
