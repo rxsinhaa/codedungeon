@@ -8,6 +8,7 @@ import Hud from './Hud';
 import QuestBoard from './QuestBoard';
 import RoomTransition from './RoomTransition';
 import VictoryScroll from './VictoryScroll';
+import DungeonGuide from './DungeonGuide';
 import type { Language } from '@/lib/languages';
 import { getLanguage } from '@/lib/languages';
 import { executeCode, createQuests } from '@/app/actions/code';
@@ -596,6 +597,19 @@ export default function CodeDungeon({ roomId = 'tavern-room-alpha', playerName, 
           </div>
         </div>
       )}
+      <DungeonGuide
+        currentQuest={currentQuest}
+        code={code}
+        gold={gold}
+        onDeductGold={(amount) => {
+          if (gold >= amount) {
+            setGold(prev => prev - amount);
+            logToConsole(`You paid ${amount}g for guidance.`, 'SYSTEM');
+            return true;
+          }
+          return false;
+        }}
+      />
     </div>
   );
 }
