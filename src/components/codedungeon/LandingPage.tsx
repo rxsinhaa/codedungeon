@@ -1,13 +1,16 @@
-'use client';
+"use client";
 
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Users, Globe, Lock, BookOpen, Zap, Cpu, Gem } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Globe, Lock, BookOpen, Zap, Cpu, Gem, Loader2, LogOut } from "lucide-react";
 import VillagerCrying from './Villager_Crying.webp';
+import { useAuth } from "@/context/AuthContext";
+import { signUpWithUsername, loginWithUsername } from "@/lib/firebase";
 
 interface LandingPageProps {
     onJoin: (name: string, roomId?: string) => void;
@@ -15,43 +18,84 @@ interface LandingPageProps {
     savedName?: string;
 }
 
-export default function LandingPage({ onJoin, initialRoomId, savedName }: LandingPageProps) {
-    const [name, setName] = useState(savedName || "");
-    const [tempName, setTempName] = useState("");
-    const [joinInput, setJoinInput] = useState("");
-    const [isNameDialogOpen, setNameDialogOpen] = useState(false);
+export default function LandingPage({ onJoin, initialRoomId }: LandingPageProps) {
+    const { user, loading: authLoading, signOut } = useAuth();
+
+    // Form State
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState("");
+
+    // Dialog State
+    const [isAuthDialogOpen, setAuthDialogOpen] = useState(false);
     const [isRoomSelectionOpen, setRoomSelectionOpen] = useState(false);
     const [isJoinDialogOpen, setJoinDialogOpen] = useState(false);
 
-    // If we have an initialRoomId, we want to prompt for name and then immediately join
-    // This effect runs once to open the dialog if needed
-    // But we'll rely on user interaction for now to be less intrusive, or strictly enforce it?
-    // User said "enter name, and then only we can move forward".
-    // If they came via link, they are "moving forward" to a specific room.
-    // Let's assume manual click for now for "New Adventure".
-    // For "Join Link", we might want to auto-open. 
-    // Let's handle generic flow first.
+    const handleAuth = async (mode: 'login' | 'signup') => {
+        if (!username.trim() || !password.trim()) {
+            setError("Please fill in all fields");
+            return;
+        }
 
-    const handleNameSubmit = () => {
-        if (!tempName.trim()) return;
-        setName(tempName);
-        setNameDialogOpen(false);
-        // If we had a pending "Start" action (like initialRoomId), we could trigger it here.
-        if (initialRoomId) {
-            onJoin(tempName, initialRoomId);
+        setIsLoading(true);
+        setError("");
+
+        try {
+            if (mode === 'signup') {
+                await signUpWithUsername(username, password);
+            } else {
+                await loginWithUsername(username, password);
+            }
+            // Close dialog on success
+            setAuthDialogOpen(false);
+
+            // If there was an initial room, join it immediately
+            if (initialRoomId) {
+                onJoin(username, initialRoomId);
+            }
+        } catch (err: any) {
+            console.error(err);
+            if (err.code === 'auth/operation-not-allowed') {
+                setError("Config Error: Enable Email/Password in Firebase Console");
+            } else if (err.code === 'auth/email-already-in-use') {
+                setError("Username already taken");
+            } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+                setError("Invalid username or password");
+            } else if (err.code === 'auth/weak-password') {
+                setError("Password should be at least 6 characters");
+            } else {
+                setError("Authentication failed. Try again.");
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 
     const handlePrivateRealm = () => {
-        // Generate a random 4-digit private room ID
+        if (!user?.displayName) return;
         const privateRoomId = 'room-' + Math.floor(1000 + Math.random() * 9000).toString();
-        // User wants short IDs.
-        onJoin(name, privateRoomId);
+        onJoin(user.displayName, privateRoomId);
     };
 
     const handleRandomRealm = () => {
-        onJoin(name, 'room-public-alpha');
+        if (!user?.displayName) return;
+        onJoin(user.displayName, 'room-public-alpha');
     };
+
+    const handleLogout = async () => {
+        await signOut();
+        setUsername("");
+        setPassword("");
+    };
+
+    if (authLoading) {
+        return (
+            <div className="min-h-screen bg-black flex items-center justify-center text-white">
+                <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-black flex flex-col font-retro text-white relative overflow-hidden">
@@ -63,7 +107,7 @@ export default function LandingPage({ onJoin, initialRoomId, savedName }: Landin
                     CODE DUNGEON
                 </div>
 
-                {!name ? (
+                {!user ? (
                     <Dialog>
                         <DialogTrigger asChild>
                             <Button className="font-pixel text-stone-300 hover:text-white hover:bg-stone-800 border-2 border-stone-700 bg-stone-900/50 backdrop-blur-sm">
@@ -77,8 +121,11 @@ export default function LandingPage({ onJoin, initialRoomId, savedName }: Landin
                     <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2 px-4 py-2 bg-stone-900 border border-stone-700 rounded-full">
                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                            <span className="font-pixel text-sm text-yellow-500">Wizard-{name}</span>
+                            <span className="font-pixel text-sm text-yellow-500">Wizard-{user.displayName}</span>
                         </div>
+                        <Button variant="ghost" size="icon" onClick={handleLogout} className="text-stone-400 hover:text-red-400">
+                            <LogOut className="w-5 h-5" />
+                        </Button>
                     </div>
                 )}
             </div>
@@ -95,36 +142,86 @@ export default function LandingPage({ onJoin, initialRoomId, savedName }: Landin
                 </p>
 
                 <div className="pt-2 flex flex-col md:flex-row items-center gap-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                    {!name ? (
-                        <Dialog open={isNameDialogOpen} onOpenChange={setNameDialogOpen}>
+                    {!user ? (
+                        <Dialog open={isAuthDialogOpen} onOpenChange={setAuthDialogOpen}>
                             <DialogTrigger asChild>
                                 <Button
                                     className="px-16 py-10 text-3xl font-pixel bg-green-600 hover:bg-green-700 text-white border-4 border-green-800 shadow-[0_8px_0_rgb(22,101,52)] hover:shadow-[0_4px_0_rgb(22,101,52)] hover:translate-y-1 transition-all min-w-[350px]"
                                 >
-                                    START ADVENTURE
+                                    ENTER DUNGEON
                                 </Button>
                             </DialogTrigger>
                             <DialogContent className="bg-stone-900 border-4 border-stone-600 font-retro text-white sm:max-w-md">
                                 <DialogHeader>
-                                    <DialogTitle className="text-xl text-yellow-500 font-pixel">Identify Yourself</DialogTitle>
+                                    <DialogTitle className="text-xl text-yellow-500 font-pixel text-center">AUTHENTICATE</DialogTitle>
                                 </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-stone-400">Adventurer Name</Label>
-                                        <Input
-                                            value={tempName}
-                                            onChange={(e) => setTempName(e.target.value)}
-                                            placeholder="Ex: Kevin Parker"
-                                            className="bg-black border-stone-700 text-white font-mono"
-                                            onKeyDown={(e) => e.key === 'Enter' && handleNameSubmit()}
-                                        />
+
+                                <Tabs defaultValue="login" className="w-full">
+                                    <TabsList className="grid w-full grid-cols-2 bg-black border border-stone-700">
+                                        <TabsTrigger value="login" className="font-pixel data-[state=active]:bg-stone-800 text-stone-400 data-[state=active]:text-white">LOGIN</TabsTrigger>
+                                        <TabsTrigger value="signup" className="font-pixel data-[state=active]:bg-stone-800 text-stone-400 data-[state=active]:text-white">SIGN UP</TabsTrigger>
+                                    </TabsList>
+
+                                    <div className="p-4 space-y-4">
+                                        {error && (
+                                            <div className="p-3 bg-red-900/30 border border-red-500 text-red-200 text-xs font-mono rounded">
+                                                {error}
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-2">
+                                            <Label className="text-stone-400 font-mono text-xs uppercase">Username</Label>
+                                            <Input
+                                                value={username}
+                                                onChange={(e) => setUsername(e.target.value)}
+                                                placeholder="WizardName"
+                                                className="bg-black border-stone-700 text-white font-mono"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-stone-400 font-mono text-xs uppercase">Password</Label>
+                                            <Input
+                                                type="password"
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                placeholder="••••••••"
+                                                className="bg-black border-stone-700 text-white font-mono"
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        // Check active tab to decide action? 
+                                                        // Actually we can't easily know active tab here without state.
+                                                        // Let's just default to nothing or handle in button.
+                                                    }
+                                                }}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                                <DialogFooter>
-                                    <Button onClick={handleNameSubmit} disabled={!tempName.trim()} className="w-full bg-green-600 hover:bg-green-700 font-pixel">
-                                        ENTER THE REALM
-                                    </Button>
-                                </DialogFooter>
+
+                                    <TabsContent value="login">
+                                        <DialogFooter>
+                                            <Button
+                                                onClick={() => handleAuth('login')}
+                                                disabled={isLoading}
+                                                className="w-full bg-blue-600 hover:bg-blue-700 font-pixel py-6"
+                                            >
+                                                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "RESUME QUEST"}
+                                            </Button>
+                                        </DialogFooter>
+                                    </TabsContent>
+
+                                    <TabsContent value="signup">
+                                        <DialogFooter>
+                                            <Button
+                                                onClick={() => handleAuth('signup')}
+                                                disabled={isLoading}
+                                                className="w-full bg-green-600 hover:bg-green-700 font-pixel py-6"
+                                            >
+                                                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "BEGIN ADVENTURE"}
+                                            </Button>
+                                        </DialogFooter>
+                                    </TabsContent>
+                                </Tabs>
                             </DialogContent>
                         </Dialog>
                     ) : (
@@ -185,7 +282,7 @@ export default function LandingPage({ onJoin, initialRoomId, savedName }: Landin
                                     <DialogHeader>
                                         <DialogTitle className="text-2xl text-center text-blue-400 font-pixel mb-2">ACCESS TERMINAL</DialogTitle>
                                     </DialogHeader>
-                                    <JoinSessionForm name={name} onJoin={onJoin} />
+                                    <JoinSessionForm name={user.displayName || "Unknown"} onJoin={onJoin} />
                                 </DialogContent>
                             </Dialog>
                         </>
@@ -193,7 +290,8 @@ export default function LandingPage({ onJoin, initialRoomId, savedName }: Landin
                 </div>
 
                 <div className="text-xs text-white/20 mt-16 font-mono absolute bottom-4">
-                    v1.2.0 • The Code-Dungeon Guild                </div>
+                    v1.2.0 • The Code-Dungeon Guild
+                </div>
             </div>
         </div>
     );
@@ -378,3 +476,4 @@ function HowItWorksDialogContent() {
         </DialogContent>
     );
 }
+
