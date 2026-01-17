@@ -16,6 +16,7 @@ import { onValue, ref } from 'firebase/database';
 import { db, auth } from '@/lib/firebase';
 import type { Quest } from '@/ai/flows/generate-coding-quests';
 import { dungeons, type DungeonLevel } from '@/lib/dungeons';
+import { useAuth } from '@/context/AuthContext';
 
 export type LogMessage = {
   type: 'SYSTEM' | 'QUEST' | 'ERROR' | 'SUCCESS' | 'INFO' | 'DEBUG';
@@ -35,6 +36,7 @@ interface CodeDungeonProps {
 }
 
 export default function CodeDungeon({ roomId = 'tavern-room-alpha', playerName, onExit }: CodeDungeonProps) {
+  const { user, updateProgress, progress } = useAuth();
   const [isQuestBoardOpen, setQuestBoardOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isTransitionOpen, setIsTransitionOpen] = useState(false);
@@ -356,8 +358,15 @@ export default function CodeDungeon({ roomId = 'tavern-room-alpha', playerName, 
       timestamp: Date.now()
     });
 
-    // TODO: Add xp to player stats
-  }, [logToConsole, roomId, party]);
+    // Save Personal Progress
+    if (progress) {
+      updateProgress({
+        questionsSolved: (progress.questionsSolved || 0) + 1,
+        // We can also save gold if we want persistence
+      });
+    }
+
+  }, [logToConsole, roomId, party, progress, updateProgress]);
 
   const handleCastSpell = async (currentCode: string) => {
     if (mana < 10) {
@@ -368,6 +377,11 @@ export default function CodeDungeon({ roomId = 'tavern-room-alpha', playerName, 
     setIsCasting(true);
     setMana(prev => Math.max(0, prev - 10));
     logToConsole(`Casting ${language.name} spell... (-10 Mana)`, 'INFO');
+
+    // Track attempt
+    if (progress) {
+      updateProgress({ questionsAttempted: (progress.questionsAttempted || 0) + 1 });
+    }
 
     const result = await executeCode(language.name, language.version, currentCode, currentQuest);
 
@@ -430,9 +444,17 @@ export default function CodeDungeon({ roomId = 'tavern-room-alpha', playerName, 
         setCurrentDungeon(nextDungeon);
         setIsTransitionOpen(true);
         logToConsole(`You have advanced to the next room: ${nextDungeon.name}!`, 'SYSTEM');
+
+        // Save progress: Entered new dungeon
+        if (progress) {
+          updateProgress({
+            currentDungeon: nextDungeon.id,
+            dungeonsEntered: { ...progress.dungeonsEntered, [nextDungeon.id]: true }
+          });
+        }
       }
     }
-  }, [completedQuestsCount, currentDungeon.id]); // Removed handleGenerateQuests dependency
+  }, [completedQuestsCount, currentDungeon.id, progress, updateProgress]); // Removed handleGenerateQuests dependency
 
   const handleDebugCompleteQuest = () => {
     if (currentQuest) {
