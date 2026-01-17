@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Globe, Lock, BookOpen, Zap, Cpu, Gem, Loader2, LogOut } from "lucide-react";
+import { Users, Globe, Lock, BookOpen, Zap, Cpu, Gem, Loader2, LogOut, Trophy } from "lucide-react";
 import VillagerCrying from './Villager_Crying.webp';
 import { useAuth } from "@/context/AuthContext";
 import { signUpWithUsername, loginWithUsername } from "@/lib/firebase";
@@ -108,17 +109,30 @@ export default function LandingPage({ onJoin, initialRoomId }: LandingPageProps)
                 </div>
 
                 {!user ? (
-                    <Dialog>
-                        <DialogTrigger asChild>
+                    <div className="flex items-center gap-2">
+                        <Link href="/leaderboard">
                             <Button className="font-pixel text-stone-300 hover:text-white hover:bg-stone-800 border-2 border-stone-700 bg-stone-900/50 backdrop-blur-sm">
-                                <BookOpen className="w-5 h-5 mr-2" />
-                                HOW IT WORKS
+                                <Trophy className="w-5 h-5 mr-2" />
+                                LEADERBOARD
                             </Button>
-                        </DialogTrigger>
-                        <HowItWorksDialogContent />
-                    </Dialog>
+                        </Link>
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button className="font-pixel text-stone-300 hover:text-white hover:bg-stone-800 border-2 border-stone-700 bg-stone-900/50 backdrop-blur-sm">
+                                    <BookOpen className="w-5 h-5 mr-2" />
+                                    HOW IT WORKS
+                                </Button>
+                            </DialogTrigger>
+                            <HowItWorksDialogContent />
+                        </Dialog>
+                    </div>
                 ) : (
                     <div className="flex items-center gap-4">
+                        <Link href="/leaderboard">
+                            <Button variant="ghost" size="icon" className="text-yellow-500 hover:text-yellow-400 hover:bg-stone-800" title="Leaderboard">
+                                <Trophy className="w-5 h-5" />
+                            </Button>
+                        </Link>
                         <div className="flex items-center gap-2 px-4 py-2 bg-stone-900 border border-stone-700 rounded-full">
                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                             <span className="font-pixel text-sm text-yellow-500">Wizard-{user.displayName}</span>
