@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Globe, Lock, BookOpen, Zap, Cpu, Gem, Loader2, LogOut, Swords, Key, User } from "lucide-react";
+import { Users, Globe, Lock, BookOpen, Zap, Cpu, Gem, Loader2, LogOut, Swords, Key, User, Trophy } from "lucide-react";
 import VillagerCrying from './Villager_Crying.webp';
 import { useAuth } from "@/context/AuthContext";
 import { signUpWithUsername, loginWithUsername } from "@/lib/firebase";
@@ -195,6 +196,14 @@ export default function LandingPage({ onJoin, initialRoomId }: LandingPageProps)
         <div className="min-h-screen bg-stone-950 flex flex-col items-center justify-center relative overflow-hidden">
             <div className="absolute inset-0 bg-stone-pattern opacity-20 pointer-events-none"></div>
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 pointer-events-none"></div>
+
+            {/* Leaderboard Button - Top Right */}
+            <Link href="/leaderboard" className="absolute top-4 right-4 z-20">
+                <Button variant="ghost" className="font-pixel text-yellow-500 hover:text-yellow-400 hover:bg-stone-800/50 border border-stone-700 gap-2">
+                    <Trophy className="w-4 h-4" />
+                    LEADERBOARD
+                </Button>
+            </Link>
 
             <Dialog open={isAuthDialogOpen} onOpenChange={setAuthDialogOpen}>
                 <DialogContent className="bg-stone-900 border-4 border-stone-600 sm:max-w-md p-0 overflow-hidden text-white">
