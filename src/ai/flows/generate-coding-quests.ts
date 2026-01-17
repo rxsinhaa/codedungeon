@@ -125,7 +125,10 @@ IMPORTANT: Return ONLY valid JSON. Do not use markdown formatting. The response 
   };
 
   const response = await openai.chat.completions.create({
-    model: 'xiaomi/mimo-v2-flash:free', // Switching to a model known to support structured outputs well, or keep user's if preferred. The user's example used `google/gemini-2.5-flash`. I'll try to stick to a good one.
+    model: 'xiaomi/mimo-v2-flash:free',
+    // model: 'google/gemini-2.5-flash',
+
+    // Switching to a model known to support structured outputs well, or keep user's if preferred. The user's example used `google/gemini-2.5-flash`. I'll try to stick to a good one.
     // actually, let's stick to the current one or a better one if needed. The user complained about failure.
     // Let's use google/gemini-2.0-flash-exp:free as it's generally very capable with structured outputs on OpenRouter.
     messages: [{ role: 'user', content: prompt }],
