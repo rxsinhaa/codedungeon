@@ -357,7 +357,7 @@ export default function LandingPage({ onJoin, initialRoomId }: LandingPageProps)
                                     <DialogTrigger asChild>
                                         <Button className="w-full h-14 bg-blue-900/50 hover:bg-blue-800/60 border-2 border-blue-700 hover:border-blue-500 text-blue-200 transition-all font-pixel text-base rounded-lg">
                                             <Users className="w-5 h-5 mr-2" />
-                                            JOIN ROOM
+                                            JOIN REALM
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent className="bg-stone-900 border-4 border-blue-500 text-white">
