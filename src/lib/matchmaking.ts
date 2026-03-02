@@ -112,25 +112,8 @@ export const tryMatchmaking = async (force: boolean = false) => {
         return; // Abort if no match
     });
 
-    // Post-Match Logic: Seed Bots if partial match
-    if (result.committed && matchedCount > 0 && matchedCount < MAX_PARTY_SIZE) {
-        // We act as the 'server' here and seed the room with bots
-        const botsNeeded = MAX_PARTY_SIZE - matchedCount;
-        const botNames = ['Byte', 'Glitch', 'Pixel', 'Vector', 'Null'];
-
-        const updates: Record<string, any> = {};
-        for (let i = 0; i < botsNeeded; i++) {
-            const botName = botNames[i % botNames.length] + '-' + Math.floor(Math.random() * 100);
-            const botId = `bot-${Date.now()}-${i}`;
-            updates[`dungeon-sessions/${newRoomId}/partyMembers/${botId}`] = {
-                name: `Bot-${botName}`,
-                online: true,
-                isBot: true
-            };
-        }
-
-        await import('firebase/database').then(({ update, ref: dbRef }) => {
-            update(dbRef(db), updates).catch(console.error);
-        });
-    }
+    // Removing bot seeding to ensure only real players are shown in the lobby
+    // if (result.committed && matchedCount > 0 && matchedCount < MAX_PARTY_SIZE) {
+    //  ...
+    // }
 };

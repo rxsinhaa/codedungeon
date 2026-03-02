@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, Globe, Lock, BookOpen, Zap, Cpu, Gem, Loader2, LogOut, Swords, Key, User, Trophy } from "lucide-react";
 import VillagerCrying from './Villager_Crying.webp';
+import Image from 'next/image';
 import { useAuth } from "@/context/AuthContext";
 import { signUpWithUsername, loginWithUsername } from "@/lib/firebase";
 import { joinPublicQueue, leavePublicQueue, subscribeToQueue, subscribeToMatchStatus, tryMatchmaking, MAX_PARTY_SIZE } from '@/lib/matchmaking';
@@ -36,6 +37,10 @@ export default function LandingPage({ onJoin, initialRoomId }: LandingPageProps)
     const [isRoomSelectionOpen, setRoomSelectionOpen] = useState(false);
     const [isJoinDialogOpen, setJoinDialogOpen] = useState(false);
     const [roomIdInput, setRoomIdInput] = useState("");
+    const [joinError, setJoinError] = useState("");
+    const [isSessionNotFoundOpen, setSessionNotFoundOpen] = useState(false);
+    const [invalidRoomId, setInvalidRoomId] = useState("");
+    const [isHandbookOpen, setIsHandbookOpen] = useState(false);
 
     // Matchmaking State
     const [isSearching, setIsSearching] = useState(false);
@@ -149,6 +154,31 @@ export default function LandingPage({ onJoin, initialRoomId }: LandingPageProps)
         }
         setIsLoading(true);
         setError("");
+
+        // Admin Portal Intercept
+        if (username.toLowerCase() === 'admin') {
+            try {
+                const res = await fetch('/api/admin-auth', {
+                    method: 'POST',
+                    body: JSON.stringify({ loginId: username.toLowerCase(), password }),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    sessionStorage.setItem('adminPortalUnlocked', 'true');
+                    window.location.href = '/admin';
+                } else {
+                    setError("Invalid admin credentials");
+                    setIsLoading(false);
+                }
+            } catch (e) {
+                setError("Error authenticating admin.");
+                setIsLoading(false);
+            }
+            return;
+        }
+
         try {
             if (authMode === 'signup') {
                 await signUpWithUsername(username, password);
@@ -197,13 +227,42 @@ export default function LandingPage({ onJoin, initialRoomId }: LandingPageProps)
             <div className="absolute inset-0 bg-stone-pattern opacity-20 pointer-events-none"></div>
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 pointer-events-none"></div>
 
-            {/* Leaderboard Button - Top Right */}
-            <Link href="/leaderboard" className="absolute top-4 right-4 z-20">
-                <Button variant="ghost" className="font-pixel text-yellow-500 hover:text-yellow-400 hover:bg-stone-800/50 border border-stone-700 gap-2">
-                    <Trophy className="w-4 h-4" />
-                    LEADERBOARD
-                </Button>
-            </Link>
+            {/* Top Left: Handbook Button */}
+            <Button
+                onClick={() => setIsHandbookOpen(true)}
+                variant="ghost"
+                className="absolute top-4 left-4 z-20 font-pixel text-blue-400 hover:text-blue-300 hover:bg-stone-800/50 border border-stone-700 gap-2 h-12"
+            >
+                <BookOpen className="w-4 h-4" />
+                HANDBOOK
+            </Button>
+
+            {/* Top Right Controls */}
+            <div className="absolute top-4 right-4 z-20 flex items-center gap-4">
+                {/* Leaderboard Button */}
+                <Link href="/leaderboard">
+                    <Button variant="ghost" className="font-pixel text-yellow-500 hover:text-yellow-400 hover:bg-stone-800/50 border border-stone-700 gap-2 h-12">
+                        <Trophy className="w-4 h-4" />
+                        LEADERBOARD
+                    </Button>
+                </Link>
+
+                {/* User Token */}
+                {user && (
+                    <div className="bg-stone-900/80 border-2 border-stone-600 rounded-lg p-2 pr-4 flex items-center gap-3 shadow-lg h-12">
+                        <div className="w-8 h-8 bg-green-900 rounded-full flex items-center justify-center border-2 border-green-500 shrink-0">
+                            <span className="font-pixel text-lg text-green-200 leading-none mt-1">{user.displayName ? user.displayName[0].toUpperCase() : 'W'}</span>
+                        </div>
+                        <div className="flex flex-col justify-center">
+                            <div className="text-stone-400 text-[10px] uppercase font-bold leading-tight">Logged in as</div>
+                            <div className="text-white font-pixel text-sm tracking-wide leading-tight">{user.displayName}</div>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={handleLogout} className="w-6 h-6 ml-1 hover:bg-red-900/30 hover:text-red-400 shrink-0">
+                            <LogOut className="w-4 h-4" />
+                        </Button>
+                    </div>
+                )}
+            </div>
 
             <Dialog open={isAuthDialogOpen} onOpenChange={setAuthDialogOpen}>
                 <DialogContent className="bg-stone-900 border-4 border-stone-600 sm:max-w-md p-0 overflow-hidden text-white">
@@ -302,24 +361,6 @@ export default function LandingPage({ onJoin, initialRoomId }: LandingPageProps)
                     </p>
                 </div>
 
-                {/* User Token - Centered Below Subtext */}
-                {user && (
-                    <div className="flex justify-center mb-8">
-                        <div className="bg-stone-900/80 border-2 border-stone-600 rounded-lg p-4 flex items-center gap-4 shadow-lg">
-                            <div className="w-12 h-12 bg-green-900 rounded-full flex items-center justify-center border-2 border-green-500">
-                                <span className="font-pixel text-2xl text-green-200">{user.displayName ? user.displayName[0].toUpperCase() : 'W'}</span>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-stone-400 text-xs uppercase font-bold">Logged in as</div>
-                                <div className="text-white font-pixel text-lg tracking-wide">{user.displayName}</div>
-                            </div>
-                            <Button variant="ghost" size="icon" onClick={handleLogout} className="ml-2 hover:bg-red-900/30 hover:text-red-400">
-                                <LogOut className="w-5 h-5" />
-                            </Button>
-                        </div>
-                    </div>
-                )}
-
                 {/* Action Buttons */}
                 {!user && (
                     <Button
@@ -362,7 +403,7 @@ export default function LandingPage({ onJoin, initialRoomId }: LandingPageProps)
                                 </Button>
 
                                 {/* Join Room */}
-                                <Dialog open={isJoinDialogOpen} onOpenChange={setJoinDialogOpen}>
+                                <Dialog open={isJoinDialogOpen} onOpenChange={(open) => { setJoinDialogOpen(open); setJoinError(""); }}>
                                     <DialogTrigger asChild>
                                         <Button className="w-full h-14 bg-blue-900/50 hover:bg-blue-800/60 border-2 border-blue-700 hover:border-blue-500 text-blue-200 transition-all font-pixel text-base rounded-lg">
                                             <Users className="w-5 h-5 mr-2" />
@@ -375,13 +416,33 @@ export default function LandingPage({ onJoin, initialRoomId }: LandingPageProps)
                                         </DialogHeader>
                                         <div className="flex flex-col gap-4 py-4">
                                             <Input
-                                                placeholder="e.g. room-1234"
-                                                className="bg-black border-blue-900 text-center font-mono text-xl h-14 text-white"
+                                                placeholder="e.g. 1234"
+                                                maxLength={4}
+                                                className="bg-black border-blue-900 text-center font-mono text-xl h-14 text-white placeholder-stone-600"
                                                 value={roomIdInput}
-                                                onChange={(e) => setRoomIdInput(e.target.value)}
+                                                onChange={(e) => {
+                                                    const val = e.target.value.replace(/\D/g, ''); // Allow only numbers
+                                                    setRoomIdInput(val);
+                                                    setJoinError("");
+                                                }}
                                             />
+                                            {joinError && <div className="text-red-500 text-center font-pixel text-sm">{joinError}</div>}
                                             <Button
-                                                onClick={() => onJoin(user.displayName || 'Wizard', roomIdInput)}
+                                                onClick={async () => {
+                                                    if (!roomIdInput || roomIdInput.length !== 4 || isNaN(Number(roomIdInput))) {
+                                                        setJoinError("Room ID must be a 4-digit number.");
+                                                        return;
+                                                    }
+                                                    const { get, db, ref, child } = await import('@/lib/firebase');
+                                                    const roomSnapshot = await get(child(ref(db), `dungeon-sessions/${roomIdInput}`));
+                                                    if (!roomSnapshot.exists()) {
+                                                        setInvalidRoomId(roomIdInput);
+                                                        setJoinDialogOpen(false);
+                                                        setSessionNotFoundOpen(true);
+                                                        return;
+                                                    }
+                                                    onJoin(user.displayName || 'Wizard', roomIdInput);
+                                                }}
                                                 className="h-14 bg-blue-600 hover:bg-blue-500 font-pixel text-xl"
                                             >
                                                 WARP
@@ -394,6 +455,87 @@ export default function LandingPage({ onJoin, initialRoomId }: LandingPageProps)
                     </div>
                 )}
             </div>
+
+            {/* Session Not Found Dialog */}
+            <Dialog open={isSessionNotFoundOpen} onOpenChange={setSessionNotFoundOpen}>
+                <DialogContent className="bg-stone-900 border-4 border-red-500 p-0 text-white font-pixel w-full max-w-[400px] overflow-hidden rounded-xl">
+                    <div className="flex flex-col items-center pt-8 pb-6 px-6">
+                        <div className="w-32 h-32 mb-6">
+                            <Image src={VillagerCrying} alt="Crying Villager" className="w-full h-full object-contain" />
+                        </div>
+                        <h2 className="text-3xl text-red-500 text-center uppercase leading-tight mb-4 drop-shadow-md">
+                            SESSION NOT<br />FOUND
+                        </h2>
+                        <p className="text-stone-400 font-retro text-center mb-2 leading-relaxed tracking-wide text-sm">
+                            The realm ID <span className="text-yellow-500 font-bold">{invalidRoomId}</span> does not exist in the archives.
+                        </p>
+                        <p className="text-stone-400 font-retro text-center mb-8 leading-relaxed tracking-wide text-sm">
+                            Did the goblins steal a digit?
+                        </p>
+
+                        <Button
+                            onClick={() => {
+                                setSessionNotFoundOpen(false);
+                                onJoin(user?.displayName || 'Wizard');
+                            }}
+                            className="w-full h-14 bg-[#9b51e0] hover:bg-[#8b41d0] border-2 border-[#b873ff] text-white font-pixel text-lg rounded-lg shadow-[0_0_15px_rgba(155,81,224,0.5)] transition-all uppercase tracking-wider mb-4"
+                        >
+                            CREATE NEW REALM
+                        </Button>
+                        <button
+                            onClick={() => {
+                                setSessionNotFoundOpen(false);
+                                setJoinDialogOpen(true);
+                            }}
+                            className="text-stone-400 font-retro text-sm hover:text-white transition-colors uppercase tracking-widest"
+                        >
+                            Try Again
+                        </button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Handbook Dialog */}
+            <Dialog open={isHandbookOpen} onOpenChange={setIsHandbookOpen}>
+                <DialogContent className="bg-stone-900 border-4 border-blue-500 text-white max-w-2xl max-h-[80vh] overflow-y-auto font-retro p-0">
+                    <DialogHeader className="bg-stone-950 p-6 border-b-4 border-stone-800 sticky top-0 z-10">
+                        <DialogTitle className="font-pixel text-blue-400 text-2xl flex items-center gap-3">
+                            <BookOpen className="w-6 h-6" />
+                            ADVENTURER'S HANDBOOK
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="p-8 space-y-6 text-stone-300 leading-relaxed tracking-wide">
+                        <section>
+                            <h3 className="text-xl font-pixel text-yellow-500 mb-3 border-b-2 border-stone-700 pb-1">1. The Realm</h3>
+                            <p>Welcome to CodeDungeon, an arena where your programming logic dictates your survival. You will traverse through interconnected rooms, facing algorithmic trials and arcane bugs.</p>
+                        </section>
+
+                        <section>
+                            <h3 className="text-xl font-pixel text-green-500 mb-3 border-b-2 border-stone-700 pb-1">2. Magic & Resources</h3>
+                            <ul className="list-disc pl-5 space-y-2">
+                                <li><strong>HP (Health):</strong> Drops if you fail a trial or encounter a critical trap.</li>
+                                <li><strong>MP (Mana):</strong> Required to summon your <span className="text-blue-400 italic">Dungeon Guide</span> ai-companion when you are stuck. MP regenerates slowly but can be depleted rapidly by heavy spell-casting (debugging).</li>
+                                <li><strong>Gold:</strong> Earned by swiftly conquering rooms. Spent to request deep analysis from the <span className="text-gold italic">Dungeon Guide</span>.</li>
+                            </ul>
+                        </section>
+
+                        <section>
+                            <h3 className="text-xl font-pixel text-purple-400 mb-3 border-b-2 border-stone-700 pb-1">3. Party Dynamics</h3>
+                            <p>You may venture alone or form a party of up to 4 wizards. In a party, coordinates (Code) are shared, but only the sharpest mind will secure the completion honors for the room.</p>
+                        </section>
+
+                        <section>
+                            <h3 className="text-xl font-pixel text-red-500 mb-3 border-b-2 border-stone-700 pb-1">4. The Dungeon Guide</h3>
+                            <p>Should the logic fail you, summon the Guide. Choose your requests wisely:</p>
+                            <ul className="list-disc pl-5 mt-2 space-y-1">
+                                <li><strong>Where's the error?:</strong> A quick pointer to your syntax faults.</li>
+                                <li><strong>What's the logic?:</strong> A gentle nudge in the right algorithmic direction.</li>
+                                <li><strong>Explain everything:</strong> A costly (Gold) but comprehensive breakdown of the trial.</li>
+                            </ul>
+                        </section>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {isSearching && (
                 <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-500">
@@ -448,14 +590,5 @@ export default function LandingPage({ onJoin, initialRoomId }: LandingPageProps)
                 CodeDungeon Alpha v0.3 • Establish connection to override reality
             </div>
         </div>
-    );
-}
-
-function HowItWorksDialogContent() {
-    return (
-        <DialogContent className="bg-stone-900 border-4 border-stone-600 text-white max-w-4xl max-h-[85vh] overflow-y-auto font-retro p-0">
-            {/* Content remains simple/static, handled by caller */}
-            <div className="p-8"><h2 className="text-xl font-pixel text-yellow-500">How to Play</h2></div>
-        </DialogContent>
     );
 }

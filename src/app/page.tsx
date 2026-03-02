@@ -22,8 +22,8 @@ function HomeContent() {
   }, [searchParams]);
 
   const handleStart = (name: string, existingRoomId?: string) => {
-    // Name is unused here as we use auth user's name, but keeping signature for now
-    const newRoomId = existingRoomId || `room-${Date.now()}`;
+    // Generate a 4-digit numerical room ID:
+    const newRoomId = existingRoomId || Math.floor(1000 + Math.random() * 9000).toString();
     setRoomId(newRoomId);
     router.push(`/?room=${newRoomId}`);
   };

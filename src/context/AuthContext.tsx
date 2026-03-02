@@ -7,6 +7,7 @@ import { useProgress, PlayerProgress, defaultProgress } from "@/hooks/useProgres
 interface AuthContextType {
     user: User | null;
     loading: boolean;
+    isAdmin: boolean;
     progress: PlayerProgress | null;
     updateProgress: (newProgress: Partial<PlayerProgress>) => Promise<void>;
     signOut: () => Promise<void>;
@@ -15,6 +16,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
     user: null,
     loading: true,
+    isAdmin: false,
     progress: null,
     updateProgress: async () => { },
     signOut: async () => { },
@@ -25,6 +27,7 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isAdmin, setIsAdmin] = useState(false);
     const [progress, setProgress] = useState<PlayerProgress | null>(null);
 
     const { loadProgress, saveProgress } = useProgress();
@@ -37,8 +40,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 // Load progress for logged in user
                 const userProgress = await loadProgress(currentUser.uid);
                 setProgress(userProgress || defaultProgress);
+
+                // Check Admin Status
+                if (currentUser.displayName?.toLowerCase() === 'rx') {
+                    setIsAdmin(true);
+                } else {
+                    const { get, db, ref, child } = await import('@/lib/firebase');
+                    const profileCache = await get(child(ref(db), `users/${currentUser.uid}/profile/isAdmin`));
+                    setIsAdmin(profileCache.val() === true);
+                }
             } else {
                 setProgress(null);
+                setIsAdmin(false);
             }
 
             setLoading(false);
@@ -61,6 +74,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await logout();
         setUser(null);
         setProgress(null);
+        setIsAdmin(false);
     };
 
     return (
@@ -68,6 +82,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             value={{
                 user,
                 loading,
+                isAdmin,
                 progress,
                 updateProgress: updateProgressState,
                 signOut: handleLogout

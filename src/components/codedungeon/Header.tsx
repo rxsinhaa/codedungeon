@@ -3,6 +3,7 @@ import { Scroll, Coins, Heart, Zap, Bug, LogOut } from 'lucide-react';
 import Image from 'next/image';
 import type { PartyMember } from './CodeDungeon';
 import { auth } from '@/lib/firebase';
+import { useAuth } from '@/context/AuthContext';
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -21,6 +22,7 @@ type HeaderProps = {
 export default function Header({ party, hp, mana, gold, roomId, currentRoomIndex, totalRooms, onDebugCompleteQuest, onExit }: HeaderProps) {
   const onlinePartyMembers = Object.values(party).filter(p => p.online);
   const currentUser = auth.currentUser;
+  const { isAdmin } = useAuth();
 
   return (
     <header className="h-24 bg-primary border-b-4 border-border relative z-20 flex items-center justify-between px-6 shadow-xl transition-colors duration-500">
@@ -141,8 +143,8 @@ export default function Header({ party, hp, mana, gold, roomId, currentRoomIndex
                 <div key={uid} className="group w-12 h-12 bg-secondary pixel-border border-border overflow-hidden relative cursor-pointer hover:scale-105 transition-transform">
                   <Image src={`https://api.dicebear.com/9.x/adventurer/svg?seed=${member.name}`} alt="Player" width={48} height={48} className="w-full h-full object-cover" unoptimized />
                   <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white"></div>
-                  {isCurrentUser && (
-                    <button onClick={onDebugCompleteQuest} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  {isCurrentUser && isAdmin && (
+                    <button onClick={onDebugCompleteQuest} className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" title="Bypass Quest">
                       <Bug className="w-6 h-6 text-yellow-300" />
                     </button>
                   )}
